@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -11,69 +20,57 @@ const google_auth_library_1 = require("google-auth-library");
 const otpStore = new Map();
 const client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // Send OTP to user's email
-const sendOtp = async (req, res) => {
-    try {
-        const { email } = req.body;
-        if (!email)
-            return res.status(400).json({ error: "Email is required" });
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        otpStore.set(email, otp);
-        await (0, mailer_1.sendOTP)(email, otp);
-        res.json({ message: "OTP sent" });
-    }
-    catch (error) {
-        console.error("Error sending OTP:", error);
-        res.status(500).json({ error: "Failed to send OTP" });
-    }
-};
+const sendOtp = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email } = req.body;
+    if (!email)
+        return res.status(400).json({ error: "Email is required" });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore.set(email, otp);
+    yield (0, mailer_1.sendOTP)(email, otp);
+    res.json({ message: "OTP sent" });
+});
 exports.sendOtp = sendOtp;
 // Verify OTP and return JWT
-const verifyOtp = async (req, res) => {
-    try {
-        const { email, otp } = req.body;
-        const storedOtp = otpStore.get(email);
-        if (!storedOtp || storedOtp !== otp) {
-            return res.status(400).json({ error: "Invalid OTP" });
-        }
-        let user = await User_1.default.findOne({ email });
-        if (!user) {
-            user = await User_1.default.create({ email });
-        }
-        const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" });
-        res.json({ token });
+const verifyOtp = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email, otp } = req.body;
+    const storedOtp = otpStore.get(email);
+    if (!storedOtp || storedOtp !== otp) {
+        return res.status(400).json({ error: "Invalid OTP" });
     }
-    catch (error) {
-        console.error("Error verifying OTP:", error);
-        res.status(500).json({ error: "OTP verification failed" });
-    }
-};
+    let user = yield User_1.default.findOne({ email });
+    if (!user)
+        user = yield User_1.default.create({ email });
+    const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+    });
+    res.json({ token });
+});
 exports.verifyOtp = verifyOtp;
-// Handle Google Login
-const handleGoogleLogin = async (req, res) => {
+// Google login
+const handleGoogleLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { tokenId } = req.body;
-        if (!tokenId) {
-            return res.status(400).json({ error: "Missing Google token" });
-        }
-        const ticket = await client.verifyIdToken({
+        if (!tokenId)
+            return res.status(400).json({ error: "Token ID missing" });
+        const ticket = yield client.verifyIdToken({
             idToken: tokenId,
             audience: process.env.GOOGLE_CLIENT_ID,
         });
         const payload = ticket.getPayload();
-        const email = payload?.email;
-        if (!email) {
-            return res.status(400).json({ error: "Invalid Google token" });
-        }
-        let user = await User_1.default.findOne({ email });
-        if (!user) {
-            user = await User_1.default.create({ email });
-        }
-        const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        const email = payload === null || payload === void 0 ? void 0 : payload.email;
+        if (!email)
+            return res.status(400).json({ error: "Invalid token payload" });
+        let user = yield User_1.default.findOne({ email });
+        if (!user)
+            user = yield User_1.default.create({ email });
+        const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, {
+            expiresIn: "1d",
+        });
         res.json({ token });
     }
-    catch (error) {
-        console.error("Google login error:", error);
+    catch (err) {
+        console.error("Google login error:", err);
         res.status(500).json({ error: "Google login failed" });
     }
-};
+});
 exports.handleGoogleLogin = handleGoogleLogin;
