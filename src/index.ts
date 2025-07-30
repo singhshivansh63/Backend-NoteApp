@@ -2,58 +2,52 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import helmet from "helmet"; // ✅ import helmet
+import helmet from "helmet";
 
 import authRoutes from "./routes/authRoutes";
 import noteRoutes from "./routes/noteRoutes";
 import { verifyToken } from "./middleware/authMiddleware";
 
+// Load environment variables
 dotenv.config();
+
 const app = express();
 
-// ✅ Use Helmet before routes
-app.use(helmet());
-
-// ✅ Optionally set custom Content Security Policy
-app.use(
-  helmet.contentSecurityPolicy({
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://apis.google.com"], // allow Google scripts
-      styleSrc: ["'self'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https://yourdomain.com"],
-      connectSrc: ["'self'", "https://api.yourbackend.com"],
-    },
-  })
-);
-
 // Middleware
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Health check route (fixes Cannot GET /)
+app.get("/", (_req, res) => {
+  res.send("🚀 Backend NoteApp API is up and running!");
+});
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/notes", verifyToken, noteRoutes);
 
-// MongoDB connection
+// Get port from env or use default
+const PORT = process.env.PORT || 5000;
+
+// MongoDB Connection Check
 const mongoURI = process.env.MONGO_URI;
 if (!mongoURI) {
-  console.error("❌ MONGO_URI is not defined in .env file");
+  console.error("❌ Error: MONGO_URI is not defined in .env");
   process.exit(1);
 }
 
+// Start server only if DB connects successfully
 mongoose
   .connect(mongoURI)
   .then(() => {
     console.log("✅ MongoDB connected");
-    app.listen(5000, () =>
-      console.log("🚀 Server started on http://localhost:5000")
+    app.listen(PORT, () =>
+      console.log(`🚀 Server started on http://localhost:${PORT}`)
     );
   })
   .catch((err) => {
-    console.error("❌ Failed to connect to MongoDB:", err);
+    console.error("❌ MongoDB Connection Error:", err);
     process.exit(1);
   });
-
 
